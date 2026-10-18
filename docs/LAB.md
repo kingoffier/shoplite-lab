@@ -6,9 +6,17 @@
 
 ## 1. Клонирование и обзор
 
-Адрес локального сервера указан в НАЧНИ-ЗДЕСЬ.md рядом с архивом.
-В Visual Studio: Continue without code -> Git -> Clone Repository -> вставить путь к shoplite.git.
-Команда: `git clone "ПУТЬ-К-shoplite.git" "ПАПКА-ДЛЯ-РАБОТЫ"`.
+В Visual Studio: Continue without code -> Git -> Clone Repository.
+Адрес: `https://github.com/kingoffier/shoplite-lab.git`.
+Выберите новую папку для рабочего клона. Через терминал:
+
+```powershell
+git clone https://github.com/kingoffier/shoplite-lab.git
+cd shoplite-lab
+```
+
+Если используете исходный офлайн-пакет, вместо HTTPS можно клонировать путь к shoplite.git из НАЧНИ-ЗДЕСЬ.md.
+При клонировании GitHub-адреса origin указывает на GitHub, и последующие Push отправляют ветки в GitHub.
 Откройте ShopLite.sln. View -> Git Repository показывает граф, View -> Git Changes — правки.
 
 ```powershell
@@ -49,14 +57,14 @@ git commit -m "docs: explain how to contact support"
 dotnet run --project tests/ShopLite.Checks
 git push -u origin feature/my-receipt-footer
 ```
-Push опубликует ветку в ЛОКАЛЬНОМ сервере, не в интернете.
+Push отправляет ветку в origin: на GitHub при клонировании HTTPS-адреса или на локальный сервер при работе с офлайн-пакетом.
 Для командного review сравните ветки: `git diff origin/develop...HEAD`.
-В VS можно Compare branches. Настоящий PR появляется только после публикации на GitHub/GitLab.
+В VS можно Compare branches. Для настоящего PR откройте GitHub -> Pull requests -> New pull request: base develop, compare feature/my-receipt-footer. После ревью можно выполнить Merge в GitHub вместо локального слияния в следующем разделе.
 
 ## 3. Объединение функции
 
 В VS: checkout develop, правой кнопкой по feature/my-receipt-footer -> Merge into develop.
-В реальной команде этот шаг обычно выполняет PR после ревью и CI.
+В реальной команде этот шаг обычно выполняет PR после ревью и CI. Если PR уже объединён на GitHub, достаточно переключиться на develop и выполнить git pull --ff-only; повторный локальный merge не нужен.
 
 ```powershell
 git switch develop
@@ -191,7 +199,15 @@ git log --oneline -3
 ```
 Будут два коммита: исходная правка и её отмена. История сохранится.
 
-## 9. GitHub — необязательный следующий этап
+## 9. GitHub и собственная копия
+
+Репозиторий уже опубликован: https://github.com/kingoffier/shoplite-lab.
+Если вы клонировали его HTTPS-адрес, origin уже настроен: дополнительный remote github не нужен.
+Ваши новые ветки после Push появятся в Branches, PR создаются в Pull requests,
+сборки видны в Actions. История выполненных локальных деплоев: [history/DEPLOYMENTS.md](history/DEPLOYMENTS.md).
+Автоматического облачного CD в этом проекте нет.
+
+Следующие команды относятся только к переносу офлайн-пакета в ДРУГОЙ новый репозиторий.
 
 Создайте на GitHub пустой репозиторий без README, лицензии и .gitignore.
 Из своего рабочего клона добавьте второй remote; origin сохранится локальным учебным сервером:

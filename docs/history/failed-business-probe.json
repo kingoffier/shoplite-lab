@@ -1,0 +1,8 @@
+{
+  "action": "business_probe",
+  "environment": "production",
+  "version": "v1.3.0",
+  "status": "failed",
+  "exitCode": 2,
+  "output": "VIP probe: expected=9000 actual=8000,0"
+}
