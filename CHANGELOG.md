@@ -1,5 +1,8 @@
 # Release history
 
+## v1.3.1
+- Hotfix: uniform 10% VIP discount and high-value regression coverage.
+
 ## v1.3.0
 - VIP pricing. A high-value-order regression is discovered during deployment rehearsal.
 
