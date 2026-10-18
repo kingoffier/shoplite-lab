@@ -1,0 +1,25 @@
+name: build-and-check
+on:
+  push:
+    branches: ['main', 'develop', 'feature/**', 'hotfix/**', 'release/**']
+    tags: ['v*']
+  pull_request:
+    branches: ['main', 'develop']
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet restore ShopLite.sln
+      - run: dotnet build ShopLite.sln -c Release --no-restore
+      - run: dotnet run --project tests/ShopLite.Checks -c Release --no-build
+      - run: dotnet publish src/ShopLite -c Release --no-restore -o artifact --no-self-contained
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shoplite-${{ github.sha }}
+          path: artifact/
