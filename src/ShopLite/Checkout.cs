@@ -9,10 +9,12 @@ public static class Checkout
         return unitPrice * quantity;
     }
 
-    public static decimal Calculate(decimal subtotal)
+    public static decimal Calculate(decimal subtotal, decimal discountPercent = 0m)
     {
         if (subtotal < 0m) throw new ArgumentOutOfRangeException(nameof(subtotal));
+        if (discountPercent < 0m || discountPercent > 100m) throw new ArgumentOutOfRangeException(nameof(discountPercent));
         var shipping = subtotal > DeliveryPolicy.FreeShippingThreshold ? 0m : DeliveryPolicy.ShippingFee;
-        return subtotal + shipping;
+        var discounted = decimal.Round(subtotal * (1m - discountPercent / 100m), 2, MidpointRounding.AwayFromZero);
+        return discounted + shipping;
     }
 }
