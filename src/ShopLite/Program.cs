@@ -15,4 +15,5 @@ if (args.Contains("--probe-loyalty"))
 Console.WriteLine("ShopLite — учебный магазин");
 Console.WriteLine($"Товары: 1 000 руб. Итог с доставкой: {Checkout.Calculate(1000m):F2} руб.");
 Console.WriteLine($"VIP order 10 000 RUB: {Checkout.CalculateVip(10000m):F2} RUB");
+Console.WriteLine("Спасибо за заказ! Поддержка: support@example.test");
 return 0;
