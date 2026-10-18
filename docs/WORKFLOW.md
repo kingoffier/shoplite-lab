@@ -1,0 +1,13 @@
+# Workflow
+- main: released code; develop: integration for the next release.
+- feature/* starts from develop; hotfix/* starts from main.
+- release/* freezes the next release, merges to main, gets an annotated tag.
+- Hotfix changes must return to develop as well.
+- This is one possible team workflow, not a universal rule for every company.
+- Local merges are real Git merges. There are no real GitHub PRs in this offline repository.
+- Real local deployment: build -> checks -> publish -> checksum -> smoke -> environment pointer.
+- Deploy promotes an existing immutable artifact; rollback selects an older artifact without rebuilding.
+- Production in this lab is a local directory. No process supervisor, web server or cloud is configured.
+- GitHub CI is supplied but has not run on GitHub. Local checks were run separately.
+- Recommended GitHub protections: PR required on main/develop, required checks job, prohibit force push.
+- Protection rules and required reviews must be configured on the host; YAML cannot enforce them alone.
