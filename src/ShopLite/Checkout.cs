@@ -2,6 +2,12 @@ namespace ShopLite;
 
 public static class Checkout
 {
+    public static decimal CalculateVip(decimal subtotal)
+    {
+        var percent = subtotal >= 10000m ? 20m : 10m;
+        return Calculate(subtotal, percent);
+    }
+
     public static decimal Subtotal(decimal unitPrice, int quantity)
     {
         if (unitPrice < 0m) throw new ArgumentOutOfRangeException(nameof(unitPrice));
