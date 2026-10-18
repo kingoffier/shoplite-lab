@@ -90,10 +90,12 @@ git merge origin/feature/lower-delivery-threshold
 Git остановится на конфликте. Это ожидаемо.
 В VS: Git Changes -> Unmerged Changes -> двойной щелчок -> Merge Editor.
 В Result согласуйте значение 3500m, сохраните и Accept Merge.
-Исправьте конфликтующий текст docs/shipping.md на 3500. Удалите все маркеры конфликта.
+Исправьте конфликтующий текст docs/shipping.md на 3500.
+В конфликтующих тестах оставьте проверки для 3500 и 3499.99 из своей ветки.
+Удалите все маркеры конфликта во всех трёх файлах.
 
 ```powershell
-git add src/ShopLite/DeliveryPolicy.cs docs/shipping.md
+git add src/ShopLite/DeliveryPolicy.cs docs/shipping.md tests/ShopLite.Checks/Program.cs
 git commit --no-edit
 dotnet run --project tests/ShopLite.Checks
 git push -u origin feature/my-delivery-threshold
