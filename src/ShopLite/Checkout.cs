@@ -4,7 +4,7 @@ public static class Checkout
 {
     public static decimal CalculateVip(decimal subtotal)
     {
-        var percent = subtotal >= 10000m ? 20m : 10m;
+        const decimal percent = 10m;
         return Calculate(subtotal, percent);
     }
 
