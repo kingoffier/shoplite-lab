@@ -7,11 +7,18 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+function Get-Sha256([string]$Path) {
+    $stream = [System.IO.File]::OpenRead($Path)
+    $hasher = [System.Security.Cryptography.SHA256]::Create()
+    try { return [System.BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-', '') }
+    finally { $hasher.Dispose(); $stream.Dispose() }
+}
 $package = Join-Path $ArtifactRoot $Version
 $manifest = Get-Content (Join-Path $package 'manifest.json') -Raw | ConvertFrom-Json
 if ($manifest.version -ne $Version) { throw 'Manifest version mismatch.' }
 foreach ($file in $manifest.files) {
-    $actual = (Get-FileHash -LiteralPath (Join-Path $package $file.name) -Algorithm SHA256).Hash
+    $actual = Get-Sha256 (Join-Path $package $file.name)
     if ($actual -ne $file.sha256) { throw "Artifact checksum mismatch: $($file.name)" }
 }
 & dotnet (Join-Path $package 'ShopLite.dll') --smoke
