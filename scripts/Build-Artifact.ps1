@@ -4,6 +4,13 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+function Get-Sha256([string]$Path) {
+    $stream = [System.IO.File]::OpenRead($Path)
+    $hasher = [System.Security.Cryptography.SHA256]::Create()
+    try { return [System.BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-', '') }
+    finally { $hasher.Dispose(); $stream.Dispose() }
+}
 if ($Ref -notmatch '^v\d+\.\d+\.\d+$') { throw 'Use a release tag such as v1.3.1.' }
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $sha = (& git -C $repo rev-parse "$Ref^{commit}")
@@ -30,7 +37,7 @@ try {
 & dotnet "$temporary\package\ShopLite.dll" --smoke
 if ($LASTEXITCODE -ne 0) { throw 'Artifact smoke check failed.' }
 $files = @(Get-ChildItem "$temporary\package" -File | ForEach-Object {
-    [ordered]@{ name=$_.Name; sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
+    [ordered]@{ name=$_.Name; sha256=(Get-Sha256 $_.FullName) }
 })
 $manifest = [ordered]@{ version=$Ref; commit=$sha; builtAtUtc=[DateTime]::UtcNow.ToString('o'); files=$files }
 $manifest | ConvertTo-Json -Depth 5 | Set-Content "$temporary\package\manifest.json" -Encoding UTF8
