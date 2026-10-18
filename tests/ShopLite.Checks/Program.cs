@@ -24,6 +24,8 @@ Throws("invalid coupon", () => Checkout.Calculate(1000m, 101m));
 Equal("exact free shipping threshold", 3000m, Checkout.Calculate(3000m));
 Equal("just below threshold", 3299.99m, Checkout.Calculate(2999.99m));
 Equal("ordinary VIP order", 4500m, Checkout.CalculateVip(5000m));
+Equal("high value VIP order", 9000m, Checkout.CalculateVip(10000m));
+Equal("above boundary VIP order", 18000m, Checkout.CalculateVip(20000m));
 // Additional regression cases are added as the product evolves.
 foreach (var failure in failures) Console.Error.WriteLine("FAIL " + failure);
 return failures.Count == 0 ? 0 : 1;
