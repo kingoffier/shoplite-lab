@@ -1,234 +1,1117 @@
-# Практикум: Git как в команде
+# ShopLite: пошаговый практикум с объяснением каждой команды
 
-Все команды выполняются в папке клонированного репозитория. Для PowerShell скриптов используйте
-`powershell -NoProfile -ExecutionPolicy Bypass -File ...`: Bypass действует только для этого запуска,
-постоянная политика компьютера не меняется. Нужны Git и .NET SDK 8.x.
+Репозиторий: [kingoffier/shoplite-lab](https://github.com/kingoffier/shoplite-lab).
 
-## 1. Клонирование и обзор
+Здесь ты пройдёшь одну задачу от скачивания проекта до релиза: добавишь подпись к чеку,
+сделаешь два коммита, отправишь ветку на GitHub, объединишь её через Pull Request,
+соберёшь версию и выложишь её в локальные окружения. После этого потренируешь конфликт и откат.
 
-В Visual Studio: Continue without code -> Git -> Clone Repository.
-Адрес: `https://github.com/kingoffier/shoplite-lab.git`.
-Выберите новую папку для рабочего клона. Через терминал:
+**Вводи команды по одной и смотри результат. Если шаг завершился неожиданной ошибкой,
+сначала разберись с ней, а потом переходи к следующему.** Не вставляй весь практикум в терминал сразу.
+Вывод команды показан в блоках `text`; его вводить не нужно. Код `csharp` вставляется в файл, а не в терминал.
+
+## 0. Что мы вообще будем делать
+
+| Слово | Значение в этом проекте |
+|---|---|
+| Репозиторий | Файлы проекта и история их изменений |
+| Рабочая папка | Твоя папка с открытыми файлами на ПК |
+| Коммит | Сохранённый в Git набор изменений с автором и описанием |
+| Ветка | Имя отдельной линии разработки; указывает на последний коммит этой линии |
+| `main` | Основная ветка проекта с выпущенным кодом |
+| `develop` | Ветка для объединения задач следующего релиза |
+| `feature/*` | Ветки отдельных новых функций |
+| `hotfix/*` | Ветки срочных исправлений выпущенной версии |
+| `release/*` | Ветки подготовки релиза |
+| `origin` | Короткое имя адреса репозитория на GitHub, созданное при клонировании |
+| `origin/develop` | Последнее известное твоему ПК состояние `develop` на GitHub |
+| Stage | Изменения, которые ты выбрал для следующего коммита |
+| `HEAD` | Текущий коммит; при обычной работе связан с текущей веткой |
+| PR — Pull Request | Предложение объединить ветки на GitHub; место для проверки и обсуждения |
+| Тег | Метка конкретного коммита, например `v1.3.1` |
+| Артефакт | Готовый результат сборки: DLL, необходимые файлы и сведения о версии |
+| Деплой | Выбор и размещение готовой версии для запуска в окружении |
+| Rollback | Возврат окружения на предыдущую готовую версию |
+
+Рабочая цепочка:
+
+```text
+develop → твоя feature-ветка → правки → Stage → Commit → Push
+    → Pull Request в develop → release-ветка → main → тег
+    → сборка артефакта → staging → production
+```
+
+Сохранить файл, создать коммит и сделать Push — разные действия. Сохранение меняет файл на диске;
+Commit записывает историю на ПК; Push передаёт коммиты GitHub.
+
+В этом стенде staging и production — **локальные папки**, содержащие указатели на собранные версии.
+Ветка `main` и окружение production — разные сущности. Переключение ветки не выполняет деплой.
+Схема с `develop` — один из вариантов командного процесса; не все компании используют её.
+
+## 1. Открой терминал и проверь инструменты
+
+В Visual Studio нажми **Continue without code / Продолжить без кода**.
+Дальше **View / Вид → Terminal / Терминал**. Используй PowerShell.
+Если пункта нет, открой обычный PowerShell через меню «Пуск».
+
+### 1.1. Проверить Git
+
+```powershell
+git --version
+```
+
+`git` запускает Git. `--version` просит показать установленную версию.
+Ожидаешь строку вроде `git version 2.47.1.windows.1`.
+Если команда не найдена, установи [Git for Windows](https://git-scm.com/downloads/win), затем переоткрой терминал.
+
+### 1.2. Проверить .NET
+
+```powershell
+dotnet --list-sdks
+```
+
+`dotnet` — инструмент для сборки и запуска C#-проекта. `--list-sdks` выводит установленные SDK.
+Для этого проекта нужен **SDK 8.x**, например `8.0.403`. Одного Runtime недостаточно для сборки.
+В Visual Studio установи компоненты разработки для .NET 8, если их ещё нет.
+
+### 1.3. Проверить подпись коммитов
+
+```powershell
+git config --global user.name
+git config --global user.email
+```
+
+Обе команды читают настройки: первая — имя, вторая — email. `--global` означает настройки твоего
+пользователя Windows, общие для репозиториев. Это подпись коммитов, а не вход в аккаунт.
+
+Если они уже правильные, ничего менять не надо. Если имя не задано:
+
+```powershell
+git config --global user.name "kingoffier"
+```
+
+Дополнительное значение в конце **записывает** настройку. Для почты сначала замени
+`ТВОЙ_EMAIL` на свой подтверждённый email GitHub или адрес noreply из настроек GitHub:
+
+```powershell
+git config --global user.email "ТВОЙ_EMAIL"
+```
+
+В Visual Studio то же: **Git → Settings → Git Global Settings / Git Global Config**.
+
+## 2. Скачай проект на ПК
+
+**Если ты уже клонировал этот репозиторий, повторно клонировать не надо:** открой его папку,
+перейди в неё терминалом и продолжи с раздела 3. Папка, скачанная через Download ZIP,
+не содержит историю Git и для этого практикума не подходит.
+
+### 2.1. Подготовить папку для проектов
+
+```powershell
+New-Item -ItemType Directory -Path C:\Projects -Force
+```
+
+Это команда PowerShell. Она создаёт папку `C:\Projects`.
+`-ItemType Directory` означает «создать папку», `-Path` задаёт путь,
+`-Force` позволяет использовать уже существующую папку, не удаляя её содержимое.
+Можешь выбрать другую свою папку, если удобнее.
+
+```powershell
+cd C:\Projects
+```
+
+`cd` меняет текущую папку терминала. Следующая команда будет выполняться внутри `C:\Projects`.
+Это ещё не команда Git.
+
+### 2.2. Клонировать
 
 ```powershell
 git clone https://github.com/kingoffier/shoplite-lab.git
+```
+
+`clone` скачивает репозиторий вместе с историей и создаёт папку `shoplite-lab`.
+Также создаётся служебная папка `.git` и удалённый адрес под именем `origin`.
+Обычный clone загружает сведения о ветках, но рабочие файлы показывает для одной текущей ветки.
+`git init` здесь не нужен: репозиторий уже создан.
+
+```powershell
 cd shoplite-lab
 ```
 
-Если используете исходный офлайн-пакет, вместо HTTPS можно клонировать путь к shoplite.git из НАЧНИ-ЗДЕСЬ.md.
-При клонировании GitHub-адреса origin указывает на GitHub, и последующие Push отправляют ветки в GitHub.
-Откройте ShopLite.sln. View -> Git Repository показывает граф, View -> Git Changes — правки.
+Входишь в скачанную папку. **Все дальнейшие команды, если не сказано иначе,
+выполняй из этой папки.** Например: `C:\Projects\shoplite-lab`.
+
+В Visual Studio эквивалент: **Git → Clone Repository → вставить HTTPS-адрес → выбрать путь → Clone**.
+Открой существующий **ShopLite.sln**, создавать новый проект не надо.
+
+## 3. Посмотри, что именно скачалось
+
+### 3.1. Проверить состояние
 
 ```powershell
 git status
+```
+
+Команда показывает текущую ветку, изменения файлов, Stage и состояние незавершённого слияния, если оно есть.
+Сразу после клонирования ожидаешь примерно:
+
+```text
+On branch main
+Your branch is up to date with 'origin/main'.
+nothing to commit, working tree clean
+```
+
+`working tree clean` означает, что незакоммиченных правок нет.
+`up to date` сравнивает ветку с **последним известным** состоянием `origin/main`;
+сам по себе `status` не обращается к GitHub.
+
+### 3.2. Проверить адрес GitHub
+
+```powershell
+git remote -v
+```
+
+`remote` работает с адресами удалённых репозиториев. `-v` показывает адреса подробно.
+Должен увидеть `origin` с `https://github.com/kingoffier/shoplite-lab.git` для fetch и push.
+Это один адрес с обозначением двух направлений: получать и отправлять.
+
+### 3.3. Посмотреть ветки
+
+```powershell
 git branch -a
+```
+
+`branch` показывает ветки. `-a` добавляет к списку локальных веток известные удалённые.
+Звёздочка `*` стоит у текущей локальной ветки. Например:
+
+```text
+* main
+  remotes/origin/develop
+  remotes/origin/feature/lower-delivery-threshold
+  ...
+```
+
+Это нормально: локальная `develop` появится, когда ты создашь её на основе `origin/develop`.
+Строка `origin/HEAD -> origin/main`, если есть, указывает основную удалённую ветку.
+
+### 3.4. Посмотреть историю
+
+```powershell
 git log --all --graph --decorate --oneline
+```
+
+| Часть | Что делает |
+|---|---|
+| `log` | Показывает коммиты |
+| `--all` | Учитывает все доступные ссылки на историю, включая другие ветки |
+| `--graph` | Рисует линии ветвления символами |
+| `--decorate` | Подписывает имена веток и тегов возле коммитов |
+| `--oneline` | Умещает коммит в одну строку: короткий идентификатор и сообщение |
+
+Если открылся просмотрщик, листай стрелками и нажми **Q**, чтобы выйти.
+У коммита есть идентификатор вроде `25dad2d`: по нему можно найти конкретное изменение.
+
+```powershell
 git tag -n
+```
+
+`tag` перечисляет теги версий. `-n` добавляет строку их описания.
+Должны быть исходные версии от `v1.0.0` до `v1.3.1`.
+В Visual Studio ветки и граф находятся в **View → Git Repository**.
+
+## 4. Запусти проект до своих изменений
+
+```powershell
 dotnet run --project src/ShopLite
+```
+
+`run` собирает и запускает приложение. `--project` указывает папку проекта.
+Ожидаешь текстовый чек: товары на 1000, итог с доставкой 1300, VIP-заказ на 10000 с итогом 9000.
+Это консольная программа, сайт в браузере не откроется.
+
+```powershell
 dotnet run --project tests/ShopLite.Checks
 ```
-Это обычный clone с origin. `git init` здесь не нужен. Q закрывает просмотр длинного лога.
-Настройте свои user.name и user.email, если ещё не настроены.
 
-## 2. Новая функция и первые коммиты
+Запускается другой проект — проверяющая программа. Она вызывает расчёт заказа на разных данных
+и сравнивает фактические суммы с ожидаемыми. Ожидаешь строки `PASS` без `FAIL`.
+Здесь используется собственный простой runner без NuGet-пакетов, поэтому `dotnet test` эти проверки не запускает.
 
-Сценарий: добавить текстовую подпись к чеку. В VS: checkout develop, Pull, Git -> New Branch.
+В Visual Studio открой решение, выбери **ShopLite** стартовым проектом и используй **Ctrl+F5**.
+Для проверок проще ввести вторую команду в терминал.
+
+## 5. Начни свою задачу в отдельной ветке
+
+Задача: добавить в конец чека фразу «Спасибо за заказ!» и контакт поддержки.
+Начинаем от `develop`, потому что в этом проекте туда объединяют новые функции.
+
+### 5.1. Обновить сведения с GitHub
+
+```powershell
+git fetch origin
+```
+
+`fetch` загружает новые коммиты и обновляет сведения `origin/*`.
+Текущие рабочие файлы и твою локальную ветку эта команда сама не переключает и не сливает.
+
+### 5.2. Создать локальную develop — только первый раз
 
 ```powershell
 git switch -c develop --track origin/develop
+```
+
+| Часть | Что делает |
+|---|---|
+| `switch` | Переключает ветку и соответствующие файлы в рабочей папке |
+| `-c develop` | Создаёт новую локальную ветку с именем `develop` |
+| `--track origin/develop` | Берёт начальное состояние из `origin/develop` и настраивает связь с этой веткой |
+
+Если Git пишет, что `develop` уже существует, вместо создания выполни:
+
+```powershell
+git switch develop
+```
+
+Это переключение на уже имеющуюся ветку. Затем:
+
+```powershell
 git pull --ff-only
+```
+
+`pull` получает обновления отслеживаемой ветки и применяет их к текущей.
+`--ff-only` разрешает просто передвинуть ветку вперёд, если твоя история не разошлась с удалённой.
+При расхождении команда остановится и не создаст автоматическое слияние.
+Если обновлений нет, увидишь `Already up to date`.
+
+### 5.3. Создать ветку задачи
+
+```powershell
 git switch -c feature/my-receipt-footer
 ```
-Если локальная develop уже существует, используйте `git switch develop`.
-В конец Program.cs ПЕРЕД `return 0;` добавьте:
-`Console.WriteLine("Спасибо за заказ! Поддержка: support@example.test");`
-В VS: двойной щелчок по файлу в Git Changes -> проверить diff -> + -> Commit Staged.
+
+Создаётся ветка **от текущей develop**, и ты сразу переходишь в неё.
+`feature/` — договорённость об имени, специального режима Git она не включает.
+Отдельная папка для этой ветки не создаётся: Git использует ту же рабочую папку.
+
+```powershell
+git status
+```
+
+Проверь строку `On branch feature/my-receipt-footer` **до правки файлов**.
+В Visual Studio: checkout `develop` → Pull → **Git → New Branch** → название → Based on `develop`
+→ включить Checkout branch → Create.
+
+## 6. Измени файл и посмотри разницу
+
+Открой `src/ShopLite/Program.cs`. Перед **последней** строкой `return 0;` вставь этот C#-код:
+
+```csharp
+Console.WriteLine("Спасибо за заказ! Поддержка: support@example.test");
+```
+
+Сохрани файл: **Ctrl+S**. `Console.WriteLine` выводит строку в консоль при запуске программы.
+
+```powershell
+dotnet run --project src/ShopLite
+```
+
+Проверяешь результат: в конце чека должна появиться добавленная фраза.
+Теперь:
+
+```powershell
+git status
+```
+
+Ожидаешь `modified: src/ShopLite/Program.cs` в изменениях, ещё не выбранных для коммита.
 
 ```powershell
 git diff
+```
+
+Показывает изменения отслеживаемых файлов между рабочей папкой и Stage.
+Добавленные строки помечены `+`, удалённые — `-`. Новые ещё неотслеживаемые файлы сюда не попадают.
+В Visual Studio то же: **Git Changes → двойной щелчок по Program.cs**.
+
+## 7. Сделай первый коммит
+
+### 7.1. Выбрать файл для коммита
+
+```powershell
 git add src/ShopLite/Program.cs
+```
+
+`add` кладёт **текущее содержимое изменений этого файла** в Stage.
+Это ещё не коммит и не отправка на GitHub. Если после `add` снова отредактируешь файл,
+новые правки потребуется добавить ещё раз, чтобы они тоже попали в коммит.
+
+```powershell
+git diff --staged
+```
+
+`--staged` показывает именно подготовленные изменения относительно последнего коммита.
+Проверь, что туда попала нужная строка и нет случайных правок.
+
+### 7.2. Записать коммит
+
+```powershell
 git commit -m "feat: add support contact to receipt"
 ```
-Добавьте docs/support.md с инструкцией обращения в поддержку и создайте второй коммит.
+
+`commit` записывает подготовленные изменения в историю **текущей ветки на ПК**.
+`-m` задаёт сообщение коммита, текст в кавычках — его описание.
+`feat:` — принятый здесь префикс для новой функции; Git его не требует.
+Ожидаешь строку с именем ветки, идентификатором коммита и сообщением.
+
+```powershell
+git status
+```
+
+Если больше ничего не менял, ожидаешь `working tree clean`. На GitHub этого коммита пока нет.
+В Visual Studio: **Git Changes → `+` рядом с файлом → сообщение → Commit Staged**.
+
+## 8. Сделай второй коммит с документацией
+
+В Visual Studio создай файл `docs/support.md` с содержимым:
+
+```markdown
+# Поддержка
+
+Если возникла проблема с заказом, напишите на support@example.test.
+Укажите сумму заказа и описание проблемы.
+```
+
+Сохрани. Проверяем:
+
+```powershell
+git status
+```
+
+Новый файл сначала появится в `Untracked files`: Git видит его, но ещё не включил в историю.
 
 ```powershell
 git add docs/support.md
+```
+
+Выбираешь новый файл для следующего коммита.
+
+```powershell
 git commit -m "docs: explain how to contact support"
+```
+
+Создаёшь второй коммит. Префикс `docs:` обозначает документацию.
+
+```powershell
+git log --oneline -2
+```
+
+`-2` ограничивает вывод двумя последними коммитами. Должны быть твои две правки.
+Они пока существуют локально; это удобно для истории и не требует отправлять каждый коммит отдельно.
+
+## 9. Проверь и отправь ветку на GitHub
+
+```powershell
 dotnet run --project tests/ShopLite.Checks
+```
+
+Перед отправкой снова запускаешь проверки. Все должны пройти.
+
+```powershell
 git push -u origin feature/my-receipt-footer
 ```
-Push отправляет ветку в origin: на GitHub при клонировании HTTPS-адреса или на локальный сервер при работе с офлайн-пакетом.
-Для командного review сравните ветки: `git diff origin/develop...HEAD`.
-В VS можно Compare branches. Для настоящего PR откройте GitHub -> Pull requests -> New pull request: base develop, compare feature/my-receipt-footer. После ревью можно выполнить Merge в GitHub вместо локального слияния в следующем разделе.
 
-## 3. Объединение функции
+| Часть | Что делает |
+|---|---|
+| `push` | Передаёт GitHub необходимые коммиты и обновляет ветку назначения |
+| `origin` | Адрес GitHub, который мы проверили через `git remote -v` |
+| `feature/my-receipt-footer` | Имя отправляемой ветки |
+| `-u` | Запоминает её удалённую пару для будущих обычных `push` и `pull` |
 
-В VS: checkout develop, правой кнопкой по feature/my-receipt-footer -> Merge into develop.
-В реальной команде этот шаг обычно выполняет PR после ревью и CI. Если PR уже объединён на GitHub, достаточно переключиться на develop и выполнить git pull --ff-only; повторный локальный merge не нужен.
+Если удалённой ветки ещё нет, она появится. Push не отправляет незакоммиченные правки.
+Ожидаешь сообщение `[new branch] feature/my-receipt-footer`.
+В браузере открой GitHub и выбери эту ветку: появятся твоя подпись и документация.
+`main` и `develop` пока прежние.
+
+При запросе авторизации выполни вход в свой GitHub-аккаунт штатным способом.
+В Visual Studio эквивалент — **Push / Publish Branch**.
+
+Для следующих коммитов **в этой же ветке** достаточно:
+
+```powershell
+git push
+```
+
+Git использует связь, установленную через `-u`.
+
+## 10. Создай Pull Request и объедини функцию
+
+### 10.1. Посмотреть весь объём своей задачи
+
+```powershell
+git diff origin/develop...HEAD
+```
+
+Команда показывает разницу от общего предка `origin/develop` и твоего текущего коммита до `HEAD`.
+Три точки `...` выбирают такой способ сравнения: удобно увидеть, что добавила твоя ветка.
+Увидишь добавленную строку и файл поддержки. Это просмотр, файлы команда не меняет.
+
+### 10.2. Создать PR в браузере
+
+1. Открой [Pull requests](https://github.com/kingoffier/shoplite-lab/pulls) → **New pull request**.
+2. Выбери **base: develop**, **compare: feature/my-receipt-footer**.
+3. Название: `Добавлена подпись и контакт поддержки в чек`.
+4. В описании напиши: что изменил, как запускал приложение и проверки.
+5. Нажми **Create pull request**.
+6. Посмотри вкладки **Commits**, **Files changed** и результат проверок, если запустился CI.
+
+**base** — куда добавляется работа; **compare** — откуда берутся изменения.
+PR — функция GitHub. В обычном Git команды создания PR нет.
+
+### 10.3. Выполнить Merge
+
+Для этого учебного прохода на GitHub выбери **Create a merge commit / Merge pull request**,
+затем **Confirm merge**. Пока оставь ветку, чтобы видеть её в истории.
+Если GitHub сообщает о конфликтах или обязательных проверках, сначала разберись с ними.
+
+В команде PR перед Merge проверяет коллега. Здесь ты можешь пройти обе роли самостоятельно.
+Слияние на GitHub обновило **удалённую develop**, но файлы на твоём ПК ещё не обновились.
+
+```powershell
+git switch develop
+```
+
+Переключаешься на локальную ветку интеграции.
+
+```powershell
+git pull --ff-only
+```
+
+Загружаешь результат Merge с GitHub. Теперь твоя локальная `develop` тоже содержит функцию.
+
+```powershell
+dotnet run --project src/ShopLite
+```
+
+Проверь: фраза поддержки есть уже в `develop`.
+
+### Если хочешь понять именно команду merge
+
+Это **альтернативный способ** объединить задачу без PR, если ты ещё НЕ выполнил Merge на GitHub:
 
 ```powershell
 git switch develop
 git pull --ff-only
-git merge --no-ff feature/my-receipt-footer -m "merge: receipt footer after local review"
-dotnet run --project tests/ShopLite.Checks
+git merge --no-ff feature/my-receipt-footer -m "merge: add receipt footer"
 git push
 ```
-Вы объединили работу в develop; main и production ещё не поменялись.
 
-## 4. Настоящий конфликт в коде
+Первые две команды выбирают и обновляют `develop`. `merge` добавляет в **текущую** ветку изменения
+названной ветки; `--no-ff` создаёт отдельный merge-коммит даже там, где можно просто передвинуть указатель.
+`-m` задаёт сообщение этого коммита. Последний `push` отправляет обновлённую `develop` GitHub.
+Выбери один способ: PR из основного шага или это локальное слияние.
 
-Коллега уже подготовил origin/feature/lower-delivery-threshold (2500 RUB).
-Ваша задача на своей ветке — 3500 RUB. Обе ветки меняют одну строку одного файла.
+**Контрольная точка:** функция есть в `develop`, в `main` её пока нет; деплой ещё не выполнялся.
 
-```powershell
-git switch develop
-git switch -c feature/my-delivery-threshold
-```
-В src/ShopLite/DeliveryPolicy.cs замените 3000m на 3500m.
-В docs/shipping.md замените 3000 на 3500.
-В тестах замените тест exact threshold на Calculate(3500m) == 3500m,
-а just below threshold на Calculate(3499.99m) == 3799.99m.
+## 11. Подготовь релиз v1.4.0
 
-```powershell
-git add src/ShopLite/DeliveryPolicy.cs docs/shipping.md tests/ShopLite.Checks/Program.cs
-git commit -m "feat: raise free shipping threshold to 3500 RUB"
-git fetch origin
-git merge origin/feature/lower-delivery-threshold
-```
-Git остановится на конфликте. Это ожидаемо.
-В VS: Git Changes -> Unmerged Changes -> двойной щелчок -> Merge Editor.
-В Result согласуйте значение 3500m, сохраните и Accept Merge.
-Исправьте конфликтующий текст docs/shipping.md на 3500.
-В конфликтующих тестах оставьте проверки для 3500 и 3499.99 из своей ветки.
-Удалите все маркеры конфликта во всех трёх файлах.
+Первые шесть версий уже существуют; `v1.4.0` создадим сами.
+Если ты ранее уже прошёл этот этап и создал такой тег, не перезаписывай его: для повторного прохода
+выбери новую версию и последовательно замени её во всех следующих командах.
 
-```powershell
-git add src/ShopLite/DeliveryPolicy.cs docs/shipping.md tests/ShopLite.Checks/Program.cs
-git commit --no-edit
-dotnet run --project tests/ShopLite.Checks
-git push -u origin feature/my-delivery-threshold
-```
-Пока не сливайте эту ветку в develop: для первого релиза используем уже готовую подпись чека.
-Отменить незавершённый merge можно командой `git merge --abort`.
-
-## 5. Релиз v1.4.0
+### 11.1. Создать ветку подготовки релиза
 
 ```powershell
 git switch develop
 git pull --ff-only
 git switch -c release/my-1.4.0
 ```
-Добавьте запись о подписи чека в CHANGELOG.md, затем:
+
+Первая команда выбирает ветку с объединёнными задачами. Вторая получает её актуальное состояние.
+Третья создаёт от неё отдельную ветку подготовки релиза и переключается в неё.
+В репозитории есть старая учебная `release/1.4.0`, поэтому здесь используем другое имя — `release/my-1.4.0`.
+Имя ветки и имя тега не обязаны совпадать.
+
+Открой `CHANGELOG.md` и добавь в начало после заголовка:
+
+```markdown
+## v1.4.0
+- В чек добавлены благодарность за заказ и контакт поддержки.
+- Добавлена инструкция обращения в поддержку.
+```
 
 ```powershell
 git add CHANGELOG.md
 git commit -m "release: prepare v1.4.0"
+```
+
+`add` выбирает запись о релизе, `commit` фиксирует её в релизной ветке.
+
+```powershell
 dotnet run --project tests/ShopLite.Checks
+```
+
+Проверяешь версию, которую собираешься выпускать. При `FAIL` сначала исправь причину и закоммить исправление.
+
+### 11.2. Объединить релиз с main
+
+На этом учебном репозитории покажем операцию командами.
+В команде с защищённой `main` вместо прямого Push создают PR из релизной ветки в `main`.
+
+```powershell
 git switch main
+```
+
+Выбираешь ветку выпущенного кода. **Merge изменит текущую ветку**, поэтому сначала проверяем её.
+
+```powershell
 git pull --ff-only
+```
+
+Получаешь изменения `origin/main`, которые могли появиться с момента клонирования.
+
+```powershell
 git merge --no-ff release/my-1.4.0 -m "merge: release v1.4.0"
+```
+
+Объединяешь подготовленный релиз с **текущей main**.
+`--no-ff` оставляет отдельный merge-коммит, `-m` задаёт его описание.
+Сейчас main обновилась только на ПК.
+
+### 11.3. Поставить тег версии
+
+```powershell
 git tag -a v1.4.0 -m "Release 1.4.0: receipt footer"
+```
+
+`tag` создаёт метку текущего коммита. `-a` делает её аннотированной: с автором, датой и сообщением.
+`v1.4.0` — имя метки, `-m` — описание.
+Тег позволяет позже собрать именно этот код, даже когда ветка main уйдёт дальше.
+Команда ещё не создаёт отдельную страницу GitHub Release с файлами.
+
+```powershell
 git push origin main
+```
+
+Отправляешь обновлённую main на GitHub. Здесь адрес и ветку задали явно, поэтому `-u` не требуется.
+
+```powershell
 git push origin v1.4.0
+```
+
+Отдельно отправляешь тег. Обычный Push ветки не обязан отправлять теги.
+На GitHub смотри **Code → Tags**.
+
+### 11.4. Вернуть релизные правки в develop
+
+```powershell
 git switch develop
-git merge main
+git merge main --no-edit
 git push origin develop
 ```
-Релизный тег указывает на точный коммит. Создание тега и Push сами по себе ничего локально не деплоят.
 
-## 6. Сборка и деплой своими руками
+Первая команда выбирает develop. Вторая добавляет в неё изменения main, включая релизную документацию;
+`--no-edit` принимает стандартное сообщение, если требуется merge-коммит, и не открывает редактор.
+Третья отправляет результат GitHub.
 
-В VS откройте View -> Terminal. Команды одинаковые:
+**Контрольная точка:** main содержит функцию, тег v1.4.0 опубликован. Ни staging, ни production
+от этого ещё не переключились на новую версию.
+
+## 12. Собери артефакт из тега
+
+Всё ещё работай из корня репозитория, где находится ShopLite.sln.
+
+```powershell
+git status
+```
+
+Ожидаешь `working tree clean`: скрипт сборки требует сначала закоммитить или отложить правки.
+
+### 12.1. Что означает длинная команда PowerShell
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-Artifact.ps1 -Ref v1.4.0
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Deploy.ps1 -Version v1.4.0 -Environment staging
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Run-Current.ps1 -Environment staging
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Deploy.ps1 -Version v1.4.0 -Environment production
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Run-Current.ps1 -Environment production
 ```
-Build берёт исходники из тега, запускает проверки, публикует DLL и сохраняет SHA256.
-Deploy проверяет хеши и smoke, затем меняет current.json. Оба окружения используют ОДИН артефакт.
-Сборка и переключение окружения — разные операции. `.lab/` игнорируется Git.
+
+| Часть | Что делает |
+|---|---|
+| `powershell` | Запускает отдельный процесс PowerShell |
+| `-NoProfile` | Не загружает пользовательские настройки запуска PowerShell |
+| `-ExecutionPolicy Bypass` | Разрешает выполнение скрипта в этом процессе; постоянная политика компьютера не меняется |
+| `-File scripts/Build-Artifact.ps1` | Указывает файл учебного скрипта сборки |
+| `-Ref v1.4.0` | Параметр именно нашего скрипта: взять код из указанного Git-тега |
+
+`Build-Artifact.ps1` — наша программа автоматизации, не встроенная команда Git.
+Она выгружает исходники указанного тега во временную папку, запускает проверки,
+собирает Release-версию через `dotnet publish`, проверяет базовый запуск и сохраняет пакет.
+Переключать рабочую ветку на тег для этого не нужно.
+
+Ожидаешь строки `PASS`, затем `SMOKE OK` и строку `ARTIFACT v1.4.0 ...`.
+Пакет окажется в `.lab/artifacts/v1.4.0`. `manifest.json` хранит версию, точный commit SHA и хеши файлов.
+Хеш — контрольное значение, позволяющее заметить, что файл после сборки изменился.
+Release здесь — режим сборки .NET, а не имя ветки Git.
+
+Скрипт не перезаписывает уже существующий пакет с тем же именем.
+При повторной сборке используй новую версию или другой `-ArtifactRoot`, как в разделе про инцидент.
+Папка `.lab` исключена из Git, поэтому обычный `git status` не перечисляет её содержимое.
+
+## 13. Выложи ту же сборку сначала в staging, потом в production
+
+### 13.1. Деплой в staging
 
 ```powershell
-Get-Content .lab/environments/deployments.jsonl
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Deploy.ps1 -Version v1.4.0 -Environment staging
+```
+
+Обёртка `powershell ... -File` уже знакома. Теперь запускается **Deploy.ps1**.
+`-Version v1.4.0` выбирает готовый пакет, `-Environment staging` выбирает учебное проверочное окружение.
+Скрипт проверит хеши и базовый запуск, затем запишет текущую версию в
+`.lab/environments/staging/current.json` и добавит событие в журнал.
+Ожидаешь `SMOKE OK` и `DEPLOY staging -> v1.4.0`.
+
+### 13.2. Запустить именно выложенную версию
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Run-Current.ps1 -Environment staging
+```
+
+**Run-Current.ps1** читает указатель staging и запускает соответствующий собранный пакет.
+Ожидаешь `RUN staging v1.4.0`, текст чека и твою фразу поддержки.
+В отличие от `dotnet run --project src/ShopLite`, запускается выбранный артефакт окружения,
+а не исходники, которые сейчас открыты в рабочей папке.
+
+### 13.3. Выполнить бизнес-проверку в staging
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Run-Current.ps1 -Environment staging -ProbeLoyalty
+```
+
+`-ProbeLoyalty` включает специальную проверку VIP-скидки.
+Ожидаешь `VIP probe: expected=9000 actual=9000` и успешное завершение.
+Это отдельная проверка бизнес-результата; простой `SMOKE OK` не гарантирует правильность всех расчётов.
+
+### 13.4. Переключить production на тот же пакет
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Deploy.ps1 -Version v1.4.0 -Environment production
+```
+
+Изменился только `-Environment`: теперь переключается production.
+Пакет не пересобирается — используется тот же артефакт v1.4.0, который проверили в staging.
+Ожидаешь `DEPLOY production -> v1.4.0`.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Run-Current.ps1 -Environment production
+```
+
+Запускаешь выбранную production-версию и проверяешь подпись чека.
+Скрипты не запускают постоянно работающий веб-сервер: для консольного приложения деплой и запуск — отдельные операции.
+
+### 13.5. Посмотреть журнал
+
+```powershell
 Get-Content .lab/environments/production/current.json
 ```
 
-## 7. Повторить инцидент и rollback
-
-Используйте изолированные каталоги .lab/replay — они не затронут вашу v1.4.0.
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-Artifact.ps1 -Ref v1.2.1 -ArtifactRoot .lab/replay/artifacts
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-Artifact.ps1 -Ref v1.3.0 -ArtifactRoot .lab/replay/artifacts
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Deploy.ps1 -Version v1.2.1 -Environment production -ArtifactRoot .lab/replay/artifacts -EnvironmentRoot .lab/replay/environments
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Deploy.ps1 -Version v1.3.0 -Environment production -ArtifactRoot .lab/replay/artifacts -EnvironmentRoot .lab/replay/environments
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Run-Current.ps1 -Environment production -ProbeLoyalty -ArtifactRoot .lab/replay/artifacts -EnvironmentRoot .lab/replay/environments
-```
-Последняя команда НАМЕРЕННО завершится кодом 2: VIP expected=9000, actual=8000.
-Это учебный дефект v1.3.0, а не поломка стенда. Basic smoke его не обнаруживает.
-Возврат предыдущего готового артефакта:
+`Get-Content` — PowerShell-команда чтения текстового файла.
+Здесь показывает, какая версия выбрана в production, её коммит и предыдущую версию.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Deploy.ps1 -Version v1.2.1 -Environment production -Rollback -ArtifactRoot .lab/replay/artifacts -EnvironmentRoot .lab/replay/environments
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Run-Current.ps1 -Environment production -ArtifactRoot .lab/replay/artifacts -EnvironmentRoot .lab/replay/environments
+Get-Content .lab/environments/deployments.jsonl
 ```
-Rollback не делает git reset, не меняет main и не удаляет коммиты.
-Вы возвращаете production на предыдущий пакет, пока исправляется ошибка.
-Разбор: docs/incidents/INC-001.md; исправление: hotfix/vip-discount и тег v1.3.1.
 
-## 8. Опубликованный коммит, который нужно отменить
+Читаешь журнал операций. Каждая строка JSON — отдельный deploy или rollback:
+время, окружение, версия, commit SHA, предыдущая версия и результат.
+Предыдущие выполненные при подготовке стенда операции доступны в [истории деплоев](history/DEPLOYMENTS.md).
+В новом клоне свои `.lab` и журналы появятся только после твоих сборок и деплоев.
 
-Создайте безопасную тренировочную ветку, добавьте docs/experiment.md и закоммитьте её.
+**Контрольная точка:** ты прошёл весь путь от изменения исходника до выбранной production-сборки.
+
+## 14. Дополнительное упражнение: настоящий конфликт
+
+Делай после основного релиза, чтобы упражнение не мешало ему.
+Ветка коллеги `feature/lower-delivery-threshold` предлагает бесплатную доставку от 2500.
+Ты предложишь 3500. Обе стороны изменят одни и те же строки в коде, тексте и проверках.
+
+### 14.1. Создать свою ветку
+
+```powershell
+git status
+```
+
+Перед сменой задачи проверь отсутствие незакоммиченных правок.
 
 ```powershell
 git switch develop
+git pull --ff-only
+git switch -c feature/my-delivery-threshold
+```
+
+Выбираешь и обновляешь develop, затем создаёшь от неё новую ветку для порога доставки.
+
+### 14.2. Изменить три файла
+
+В `src/ShopLite/DeliveryPolicy.cs` замени `3000m` на `3500m`.
+Это денежная константа C#; суффикс `m` означает тип decimal, его оставь.
+
+В `docs/shipping.md` замени `3000` на `3500`.
+
+В `tests/ShopLite.Checks/Program.cs` найди две проверки границы и замени их на:
+
+```csharp
+Equal("exact free shipping threshold", 3500m, Checkout.Calculate(3500m));
+Equal("just below threshold", 3799.99m, Checkout.Calculate(3499.99m));
+```
+
+Первый тест требует бесплатную доставку ровно от 3500.
+Второй требует платную доставку для суммы 3499.99: плюс 300, итого 3799.99.
+Сохрани все файлы.
+
+```powershell
+dotnet run --project tests/ShopLite.Checks
+```
+
+Проверяешь, что твои согласованные изменения работают до слияния.
+
+```powershell
+git add src/ShopLite/DeliveryPolicy.cs docs/shipping.md tests/ShopLite.Checks/Program.cs
+```
+
+Один `add` может принимать несколько путей: выбираешь три файла для одного связанного коммита.
+
+```powershell
+git commit -m "feat: raise free shipping threshold to 3500 RUB"
+```
+
+Записываешь своё предложение в историю текущей feature-ветки.
+
+### 14.3. Попробовать добавить предложение коллеги
+
+```powershell
+git fetch origin
+```
+
+Обновляешь сведения о ветке коллеги.
+
+```powershell
+git merge origin/feature/lower-delivery-threshold
+```
+
+Пытаешься объединить изменения коллеги с **твоей текущей веткой**.
+Локальную копию ветки коллеги создавать не обязательно: merge принимает `origin/...`.
+Ожидаешь `CONFLICT` для трёх файлов. Это запланированный учебный результат.
+
+```powershell
+git status
+```
+
+Команда покажет неразрешённые пути. Пока слияние не завершено, не начинай другую задачу.
+
+### 14.4. Решить конфликт
+
+В Visual Studio открой **Git Changes → Unmerged Changes → двойной щелчок по файлу → Merge Editor**.
+В этом Merge **Current** — твой вариант 3500, **Incoming** — предложение коллеги 2500.
+Для упражнения считаем, что команда договорилась оставить 3500.
+
+В области Result оставь:
+
+- `DeliveryPolicy.cs`: константу 3500m;
+- `docs/shipping.md`: порог 3500;
+- файл проверок: обе строки из шага 14.2.
+
+Сохрани и нажми Accept Merge для каждого файла.
+При ручном редактировании убери маркеры `<<<<<<<`, `=======`, `>>>>>>>`, оставив правильный код.
+Просто удалить маркеры недостаточно: проверь, что противоречивые значения не остались вместе.
+
+```powershell
+git add src/ShopLite/DeliveryPolicy.cs docs/shipping.md tests/ShopLite.Checks/Program.cs
+```
+
+Во время конфликта `add` не только готовит изменения, но и сообщает Git: эти файлы разрешены.
+
+```powershell
+dotnet run --project tests/ShopLite.Checks
+```
+
+Проверяешь итоговый совместный результат перед завершением слияния.
+
+```powershell
+git commit --no-edit
+```
+
+Завершаешь merge-коммит. `--no-edit` оставляет подготовленное Git сообщение и не открывает редактор.
+
+```powershell
+git push -u origin feature/my-delivery-threshold
+```
+
+Публикуешь ветку с разрешённым конфликтом. Для упражнения оставь её отдельной, без Merge в develop.
+Так основной релиз сохранит прежний порог доставки.
+
+Если вместо решения хочешь **отменить незавершённое слияние**, используй:
+
+```powershell
+git merge --abort
+```
+
+`--abort` пытается вернуть состояние до начала Merge. В нашем упражнении до него был чистый рабочий каталог,
+а твоё изменение 3500 уже сохранено коммитом. После успешного завершения Merge эту команду не вводят.
+
+## 15. Дополнительное упражнение: неудачный релиз и rollback
+
+Повторим исторический дефект v1.3.0, не затрагивая твою production v1.4.0.
+К этому моменту незакоммиченных правок быть не должно.
+
+### 15.1. Задать отдельные пути для эксперимента
+
+```powershell
+$labArtifactRoot = '.lab/replay/artifacts'
+$labEnvironmentRoot = '.lab/replay/environments'
+```
+
+Это переменные PowerShell: знак `$` обозначает имя переменной, `=` записывает значение.
+Первая хранит путь к пакетам эксперимента, вторая — к его окружениям.
+Они действуют в текущем окне PowerShell. Если закрыл его, задай переменные заново.
+Отдельные пути позволят сохранить результаты предыдущего упражнения.
+
+### 15.2. Собрать старую стабильную и проблемную версии
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-Artifact.ps1 -Ref v1.2.1 -ArtifactRoot $labArtifactRoot
+```
+
+Собираешь стабильный тег v1.2.1. `-ArtifactRoot` меняет папку сохранения пакетов.
+PowerShell подставит вместо `$labArtifactRoot` строку `.lab/replay/artifacts`.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Build-Artifact.ps1 -Ref v1.3.0 -ArtifactRoot $labArtifactRoot
+```
+
+Собираешь проблемную v1.3.0 туда же, но в её собственную папку версии.
+Эта версия проходит существовавшие в ней обычные тесты и базовый smoke: граничного VIP-теста тогда не было.
+
+### 15.3. Сначала выложить стабильную версию
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Deploy.ps1 -Version v1.2.1 -Environment production -ArtifactRoot $labArtifactRoot -EnvironmentRoot $labEnvironmentRoot
+```
+
+`-ArtifactRoot` задаёт, где искать пакет, `-EnvironmentRoot` — где хранить указатель окружения и журнал.
+Слово production осталось, но это **production внутри отдельной папки replay**, не предыдущее окружение.
+Ожидаешь успешную выкладку v1.2.1.
+
+### 15.4. Выложить проблемную версию
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Deploy.ps1 -Version v1.3.0 -Environment production -ArtifactRoot $labArtifactRoot -EnvironmentRoot $labEnvironmentRoot
+```
+
+Переключаешь экспериментальное окружение со стабильной v1.2.1 на v1.3.0.
+Basic smoke проходит, поэтому этот учебный скрипт допускает выкладку.
+Мы намеренно воспроизводим прошлый инцидент; обычный новый релиз проверяем в staging заранее, как в разделе 13.
+
+### 15.5. Обнаружить дефект отдельной проверкой
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Run-Current.ps1 -Environment production -ProbeLoyalty -ArtifactRoot $labArtifactRoot -EnvironmentRoot $labEnvironmentRoot
+```
+
+Запускаешь VIP-пробник у выбранного пакета replay-production.
+Ожидаешь **ошибку**, а именно:
+
+```text
+VIP probe: expected=9000 actual=8000
+```
+
+Для заказа 10000 должна быть скидка 10%, но версия дала 20%.
+Проверить код завершения сразу после команды:
+
+```powershell
+$LASTEXITCODE
+```
+
+Это встроенная переменная PowerShell с кодом завершения последней внешней программы.
+Ожидаешь `2`. В этом сценарии такой результат запланирован и означает обнаруженный дефект.
+
+### 15.6. Вернуть стабильный пакет
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Deploy.ps1 -Version v1.2.1 -Environment production -Rollback -ArtifactRoot $labArtifactRoot -EnvironmentRoot $labEnvironmentRoot
+```
+
+Выбираешь уже собранный пакет v1.2.1. `-Rollback` помечает операцию в журнале как rollback.
+Пакет проверяется, затем указатель переключается назад. Git-коммиты и ветки не меняются,
+пересборки старой версии не происходит.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Run-Current.ps1 -Environment production -ArtifactRoot $labArtifactRoot -EnvironmentRoot $labEnvironmentRoot
+```
+
+Запускаешь возвращённую версию. Ожидаешь `RUN production v1.2.1` и обычный чек.
+Не запускай VIP-пробник на v1.2.1: VIP-функция появилась только в v1.3.0.
+
+```powershell
+Get-Content .lab/replay/environments/deployments.jsonl
+```
+
+В журнале должны быть deploy v1.2.1, deploy v1.3.0 и rollback v1.2.1.
+Исходный исправленный релиз — v1.3.1; разбор находится в [INC-001](incidents/INC-001.md).
+
+## 16. Дополнительное упражнение: отменить опубликованный коммит
+
+Rollback менял выбранный пакет окружения. Теперь **Revert** отменит изменение исходников новым коммитом.
+
+```powershell
+git switch develop
+git pull --ff-only
 git switch -c experiment/revert
 ```
-После создания файла:
+
+Переходишь на обновлённую develop и создаёшь изолированную тренировочную ветку.
+Создай `docs/experiment.md`, напиши в нём `Учебная временная заметка.` и сохрани файл.
 
 ```powershell
 git add docs/experiment.md
 git commit -m "experiment: add temporary note"
 git push -u origin experiment/revert
-git revert --no-edit HEAD
-git push
-git log --oneline -3
 ```
-Будут два коммита: исходная правка и её отмена. История сохранится.
 
-## 9. GitHub и собственная копия
-
-Репозиторий уже опубликован: https://github.com/kingoffier/shoplite-lab.
-Если вы клонировали его HTTPS-адрес, origin уже настроен: дополнительный remote github не нужен.
-Ваши новые ветки после Push появятся в Branches, PR создаются в Pull requests,
-сборки видны в Actions. История выполненных локальных деплоев: [history/DEPLOYMENTS.md](history/DEPLOYMENTS.md).
-Автоматического облачного CD в этом проекте нет.
-
-Следующие команды относятся только к переносу офлайн-пакета в ДРУГОЙ новый репозиторий.
-
-Создайте на GitHub пустой репозиторий без README, лицензии и .gitignore.
-Из своего рабочего клона добавьте второй remote; origin сохранится локальным учебным сервером:
+По очереди выбираешь файл, сохраняешь коммит и публикуешь его в своей экспериментальной ветке.
 
 ```powershell
-git remote add github https://github.com/YOUR_LOGIN/shoplite-lab.git
-git push github main
-git push github develop
-git push github --tags
-git push github feature/my-receipt-footer
+git revert --no-edit HEAD
 ```
-Для копирования остальных учебных веток используйте инструкции НАЧНИ-ЗДЕСЬ.md и bundle.
-Новый PR feature/my-receipt-footer -> develop будет пустым, если вы уже выполнили локальное слияние.
-Создайте НОВУЮ ветку от develop с новой правкой, отправьте её на github и откройте PR.
-CI workflow начнёт запускаться только на GitHub; прошлые Actions runs этим не создаются.
-Права, защита веток, ревью и окружения GitHub настраиваются отдельно.
-Локальный CD не является деплоем на GitHub Pages или облачный сервер.
 
-## Что здесь стоит запомнить
+`revert` создаёт новый коммит с обратными изменениями выбранного коммита.
+`HEAD` здесь — последний коммит с заметкой; `--no-edit` принимает стандартное сообщение отмены.
+Ожидаешь, что файл заметки исчезнет, но исходный коммит останется в истории.
+Этот пример относится к обычному коммиту, не к merge-коммиту.
 
-Commit сохраняет историю; push передаёт её серверу; PR организует ревью;
-merge объединяет код; tag фиксирует версию; build создаёт артефакт;
-deploy выбирает артефакт для окружения; rollback возвращает предыдущий артефакт.
-Эти действия связаны, но не заменяют друг друга.
+```powershell
+git push
+```
+
+Отправляешь коммит отмены в ту же удалённую ветку, связь с которой настроена через `-u`.
+
+```powershell
+git log --oneline -3
+```
+
+Смотришь три последних коммита: отмена, исходная заметка и предыдущая история.
+Так видны и ошибочное изменение, и его исправление. Force Push не нужен.
+
+## 17. Частые ситуации во время практикума
+
+### «not a git repository»
+
+Команда выполняется не в той папке. Перейди в свой клон:
+
+```powershell
+cd C:\Projects\shoplite-lab
+```
+
+`cd` выбирает рабочую папку. Если клонировал в другое место, используй свой путь.
+Выполнять `git init` для лечения этой ошибки не нужно.
+
+### «branch already exists»
+
+Ты пытаешься второй раз создать ветку через `-c`.
+Если хочешь продолжить прежнюю задачу, переключись на неё без `-c`, например:
+
+```powershell
+git switch feature/my-receipt-footer
+```
+
+Если проходишь упражнение заново, используй новое имя ветки и заменяй его последовательно во всех шагах.
+Не удаляй и не пересоздавай старую ветку наугад.
+
+### «Your local changes would be overwritten» при переключении
+
+Есть незакоммиченные правки. Сначала посмотри `git status` и `git diff`.
+Если это готовая работа — сделай коммит. Если ещё не готова, можно временно отложить:
+
+```powershell
+git stash push -u -m "unfinished lab changes"
+```
+
+`stash push` сохраняет правки отдельно и убирает их из рабочей папки.
+`-u` включает новые неотслеживаемые файлы, `-m` добавляет описание. Игнорируемые файлы сюда не входят.
+После возвращения **в исходную ветку**, где делал правки:
+
+```powershell
+git stash apply
+```
+
+`apply` возвращает последний stash, сохраняя его резервную запись. При пересечении правок возможен конфликт.
+Когда убедился, что всё вернулось и сохранено:
+
+```powershell
+git stash drop
+```
+
+`drop` удаляет последнюю запись stash. Не выполняй его, пока не проверил восстановление.
+
+### Файл добавлен в Stage случайно
+
+```powershell
+git restore --staged docs/support.md
+```
+
+`--staged` убирает выбранные изменения из Stage, сохраняя файл и правки в рабочей папке.
+Это позволяет передумать, что включать в коммит.
+
+### Push отклонён: удалённая ветка ушла вперёд
+
+Сначала зафиксируй свои правки, затем:
+
+```powershell
+git fetch origin
+git status
+```
+
+Первая команда обновляет сведения с GitHub, вторая показывает положение текущей ветки относительно её удалённой пары.
+Если есть только входящие коммиты и нет расхождения, используй знакомый `git pull --ff-only`.
+Если истории разошлись, не заменяй команду на Force Push: нужно проверить входящие коммиты и согласовать merge или rebase.
+
+### GitHub Actions не запускается
+
+В репозитории есть workflow `.github/workflows/ci.yml`. Файл конфигурации и выполненный запуск — разные вещи.
+Проверяй вкладку Actions, доступность GitHub Actions в настройках репозитория/аккаунта и сообщения GitHub.
+Прошлые локальные сборки не превращаются автоматически в старые GitHub Actions runs.
+Локальные проверки из практикума работают независимо от запуска CI на GitHub.
+
+### Поддержка или доставка неожиданно пропали после switch
+
+Ветки содержат разные состояния файлов. Если функция есть только в feature, при переключении на main
+до её Merge она может отсутствовать — это нормальное поведение. Проверь текущую ветку через `git status`.
+
+## 18. Короткая шпаргалка после прохождения
+
+Эта таблица — напоминание; основной практикум выше объясняет порядок и ожидаемый результат.
+
+| Команда | Значение |
+|---|---|
+| `git status` | Что изменено и в какой я ветке |
+| `git diff` | Какие правки есть вне Stage |
+| `git add путь` | Выбрать правки файла для коммита |
+| `git diff --staged` | Посмотреть выбранные правки |
+| `git commit -m "описание"` | Записать выбранные правки в локальную историю |
+| `git switch ветка` | Переключиться на существующую ветку |
+| `git switch -c новая-ветка` | Создать ветку от текущего состояния и переключиться |
+| `git fetch origin` | Обновить сведения с GitHub, не объединяя рабочие файлы |
+| `git pull --ff-only` | Получить изменения текущей удалённой пары без слияния разошедшихся историй |
+| `git push -u origin ветка` | Опубликовать ветку и запомнить удалённую пару |
+| `git push` | Отправить коммиты по настроенной связи |
+| `git merge другая-ветка` | Добавить изменения другой ветки в текущую |
+| `git tag -a версия -m "описание"` | Пометить текущий коммит версией |
+| `git revert --no-edit HEAD` | Отменить последний обычный коммит новым коммитом |
+
+В строках с `путь`, `ветка` и `описание` подставляй свои значения; это шаблоны, не готовые команды для вставки.
+
+## Документация для уточнений
+
+- [Git switch: создание и переключение веток](https://git-scm.com/docs/git-switch).
+- [Git diff: сравнение изменений](https://git-scm.com/docs/git-diff).
+- [Git revert: отмена коммита новым коммитом](https://git-scm.com/docs/git-revert).
+- [История выполненных локальных деплоев этого стенда](history/DEPLOYMENTS.md).
+
+**Commit хранит изменение, Push передаёт историю, Merge объединяет код, тег фиксирует версию,
+сборка создаёт пакет, а деплой выбирает пакет для окружения.**
