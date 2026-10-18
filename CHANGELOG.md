@@ -1,5 +1,8 @@
 # Release history
 
+## v1.2.0
+- Percentage coupons and currency rounding.
+
 ## v1.1.0
 - Quantity calculations and input validation.
 
