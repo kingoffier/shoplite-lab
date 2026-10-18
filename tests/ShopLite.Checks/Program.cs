@@ -21,6 +21,8 @@ Throws("negative unit price", () => Checkout.Subtotal(-1m, 2));
 Equal("ten percent coupon", 1200m, Checkout.Calculate(1000m, 10m));
 Equal("currency rounding", 300.91m, Checkout.Calculate(1.01m, 10m));
 Throws("invalid coupon", () => Checkout.Calculate(1000m, 101m));
+Equal("exact free shipping threshold", 3000m, Checkout.Calculate(3000m));
+Equal("just below threshold", 3299.99m, Checkout.Calculate(2999.99m));
 // Additional regression cases are added as the product evolves.
 foreach (var failure in failures) Console.Error.WriteLine("FAIL " + failure);
 return failures.Count == 0 ? 0 : 1;
