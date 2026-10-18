@@ -1,5 +1,8 @@
 # Release history
 
+## v1.2.1
+- Hotfix: exact-threshold orders no longer pay for shipping.
+
 ## v1.2.0
 - Percentage coupons and currency rounding.
 
