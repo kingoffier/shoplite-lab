@@ -21,7 +21,7 @@ Throws("negative unit price", () => Checkout.Subtotal(-1m, 2));
 Equal("ten percent coupon", 1200m, Checkout.Calculate(1000m, 10m));
 Equal("currency rounding", 300.91m, Checkout.Calculate(1.01m, 10m));
 Throws("invalid coupon", () => Checkout.Calculate(1000m, 101m));
-Equal("exact free shipping threshold", 3500m, Checkout.Calculate(3500m));
+Equal("exact free shipping threshold", 3500m, Checkout.Calculate(3500));
 Equal("just below threshold", 3799.99m, Checkout.Calculate(3499.99m));
 Equal("ordinary VIP order", 4500m, Checkout.CalculateVip(5000m));
 Equal("high value VIP order", 9000m, Checkout.CalculateVip(10000m));
